@@ -1,7 +1,6 @@
 from tkinter import *
 import socket
-import client
-import server
+from network import client, server
 from multiprocessing import Process
 def mainwindow():
     window = Tk()
