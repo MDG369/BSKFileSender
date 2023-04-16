@@ -1,6 +1,13 @@
 from tkinter import *
 import socket
 from network import client
+from tkinter import filedialog as fd
+
+file = ""
+def chooseFileButton():
+    global file
+    file = fd.askopenfilename(initialdir='/')
+
 def mainWindow():
     window = Tk()
     window.title("BSKFileSender")
@@ -17,7 +24,12 @@ def mainWindow():
     entry_port_label.pack()
     entry_port = Entry(window)
     entry_port.pack()
-    confirm = Button(window, text='Send', command=lambda: client.send(entry_ip.get(), int(entry_port.get())))
+    button_filedir_label = Label(text="Choose a file")
+    button_filedir_label.pack()
+    button_filedir = Button(window, text='Choose a file', command=lambda: chooseFileButton())
+    button_filedir.pack()
+    confirm = Button(window, text='Send', command=lambda: client.send(entry_ip.get(), int(entry_port.get()),
+                                                                      file))
     confirm.pack()
     while True:
         window.update_idletasks()

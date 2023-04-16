@@ -1,3 +1,4 @@
+import os
 import socket
 IP = "localhost"
 PORT = 15555
@@ -6,7 +7,7 @@ FORMAT = "utf-8"
 SIZE = 1024
 
 
-def send(ip, port):
+def send(ip, port, filedir):
     """ Staring a TCP socket. """
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,11 +16,11 @@ def send(ip, port):
     client.connect(ADDR)
 
     """ Opening and reading the file data. """
-    file = open("../data/file1.txt", "r")
+    file = open(filedir, 'r')
     data = file.read()
 
     """ Sending the filename to the server. """
-    client.send("file1.txt".encode(FORMAT))
+    client.send(os.path.basename(filedir).encode(FORMAT))
     msg = client.recv(SIZE).decode(FORMAT)
     print(f"[SERVER]: {msg}")
 
