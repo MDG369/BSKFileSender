@@ -1,8 +1,5 @@
 import os
 import socket
-IP = "localhost"
-PORT = 15555
-
 FORMAT = "utf-8"
 SIZE = 1024
 
@@ -34,7 +31,3 @@ def send(ip, port, filedir):
 
     """ Closing the connection from the server. """
     client.close()
-
-
-if __name__ == "__main__":
-    send(IP,PORT)
