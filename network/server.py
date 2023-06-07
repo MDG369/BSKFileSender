@@ -24,20 +24,25 @@ def main():
         conn, addr = server.accept()
         print(f"[NEW CONNECTION] {addr} connected.")
 
-        """ Receiving the filename from the client. """
+        """ Receiving the either filename or text message from the client. """
         filename = conn.recv(SIZE).decode(FORMAT)
-        print(f"[RECV] Receiving the filename.")
-        file = open(filename, "w")
-        conn.send("Filename received.".encode(FORMAT))
 
-        """ Receiving the file data from the client. """
-        data = conn.recv(SIZE).decode(FORMAT)
-        print(f"[RECV] Receiving the file data.")
-        file.write(data)
-        conn.send("File data received".encode(FORMAT))
+        """ 'TEXT' is appended to every text message to differentiate text and file transfer """
+        if filename[:4] == 'TEXT':
+            print(f"Received text message: {filename[4:]}")
+        else:
+            print(f"[RECV] Receiving the filename.")
+            file = open(filename, "w")
+            conn.send("Filename received.".encode(FORMAT))
 
-        """ Closing the file. """
-        file.close()
+            """ Receiving the file data from the client. """
+            data = conn.recv(SIZE).decode(FORMAT)
+            print(f"[RECV] Receiving the file data.")
+            file.write(data)
+            conn.send("File data received".encode(FORMAT))
+
+            """ Closing the file. """
+            file.close()
 
         """ Closing the connection from the client. """
         conn.close()

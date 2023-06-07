@@ -4,30 +4,46 @@ FORMAT = "utf-8"
 SIZE = 1024
 
 
-def send(ip, port, filedir):
-    """ Staring a TCP socket. """
+def sendText(ip, port, text):
+    """ Starting a TCP socket. """
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ADDR = (ip, port)
+    """ Connecting to the server. """
+
+    client.connect(ADDR)
+    """ 'TEXT' is appended to every text message to differentiate text and file transfer """
+    if text is not None:
+        client.send(b'TEXT' + bytes(text))
+
+    """ Closing the connection from the server. """
+    client.close()
+
+
+def sendFile(ip, port, filedir=None):
+    """ Starting a TCP socket. """
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ADDR = (ip, port)
     """ Connecting to the server. """
     client.connect(ADDR)
 
-    """ Opening and reading the file data. """
-    file = open(filedir, 'r')
-    data = file.read()
+    """ Sending either file """
+    if filedir is not None:
+        """ Opening and reading the file data. """
+        file = open(filedir, 'r')
+        data = file.read()
 
-    """ Sending the filename to the server. """
-    client.send(os.path.basename(filedir).encode(FORMAT))
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SERVER]: {msg}")
+        """ Sending the filename to the server. """
+        client.send(os.path.basename(filedir).encode(FORMAT))
+        msg = client.recv(SIZE).decode(FORMAT)
+        print(f"[SERVER]: {msg}")
 
-    """ Sending the file data to the server. """
-    client.send(data.encode(FORMAT))
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SERVER]: {msg}")
+        """ Sending the file data to the server. """
+        client.send(data.encode(FORMAT))
+        msg = client.recv(SIZE).decode(FORMAT)
+        print(f"[SERVER]: {msg}")
 
-    """ Closing the file. """
-    file.close()
-
+        """ Closing the file. """
+        file.close()
     """ Closing the connection from the server. """
     client.close()
