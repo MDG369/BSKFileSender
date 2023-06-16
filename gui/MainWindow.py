@@ -6,8 +6,6 @@ from tkinter import filedialog as fd
 file = ""
 
 
-
-
 class TkinterApp(tk.Tk):
 
     # __init__ function for class tkinterApp
@@ -100,7 +98,8 @@ class TextWindow(MainWindow):
         button1 = tk.Button(self, text="File transfer",
                             command=lambda: controller.show_frame(MainWindow))
         button1.grid(row=0, column=6, padx=10, pady=2, ipadx=20)
-
+        conn_message_label = tk.Label(self, textvariable="True")
+        conn_message_label.grid(row=3, column=2, padx=10, pady=2)
         entry_ip, entry_port = self.createIpPortSelection()
 
         text_message_label = tk.Label(self, text="Message")
@@ -111,6 +110,9 @@ class TextWindow(MainWindow):
         confirm = tk.Button(self, text='Send', command=lambda: client.sendText(entry_ip.get(), int(entry_port.get()),
                                                                                bytes(entry_text_message.get(), "utf-8")))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
+
+    def updateDisplay(self, myString, displayVar):
+        displayVar.set(myString)
 
 
 def main():

@@ -1,7 +1,11 @@
 import os
 import socket
+from time import sleep
+
 FORMAT = "utf-8"
 SIZE = 1024
+
+connected = False
 
 
 def sendText(ip, port, text):
@@ -11,12 +15,22 @@ def sendText(ip, port, text):
     """ Connecting to the server. """
 
     client.connect(ADDR)
+    global connected
+    connected = True
+    sleep(1)
     """ 'TEXT' is appended to every text message to differentiate text and file transfer """
     if text is not None:
         client.send(b'TEXT' + bytes(text))
 
     """ Closing the connection from the server. """
     client.close()
+    connected = False
+
+
+def checkConnection():
+    global connected
+    print(connected)
+    return connected
 
 
 def sendFile(ip, port, filedir=None):
@@ -47,3 +61,4 @@ def sendFile(ip, port, filedir=None):
         file.close()
     """ Closing the connection from the server. """
     client.close()
+

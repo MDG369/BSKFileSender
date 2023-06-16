@@ -1,4 +1,5 @@
 import socket
+import security.KeyGeneration
 
 IP = socket.gethostbyname(socket.gethostname())
 PORT = 4455
@@ -8,6 +9,9 @@ FORMAT = "utf-8"
 
 
 def main():
+    keygen = security.KeyGeneration.Keys()
+    keygen.readKeyPair()
+
     print("[STARTING] Server is starting.")
     """ Staring a TCP socket. """
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
