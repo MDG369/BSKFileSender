@@ -1,8 +1,13 @@
 import tkinter as tk
 import socket
+from tkinter.constants import HORIZONTAL
+from tkinter.ttk import Progressbar
+
+from cryptography.hazmat.primitives import serialization
+
 from network import client
 from tkinter import filedialog as fd
-
+import security.KeyGeneration
 file = ""
 
 
@@ -19,7 +24,7 @@ class TkinterApp(tk.Tk):
 
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-        self.geometry("350x150")
+        self.geometry("600x400")
         # initializing frames to an empty array
         self.frames = {}
 
@@ -37,6 +42,8 @@ class TkinterApp(tk.Tk):
 
         self.show_frame(MainWindow)
 
+
+
     # to display the current frame passed as
     # parameter
     def show_frame(self, cont):
@@ -46,6 +53,8 @@ class TkinterApp(tk.Tk):
 
 class MainWindow(tk.Frame):
     def __init__(self, parent, controller):
+        self.keys = security.KeyGeneration.Keys()
+        self.keys.readKeyPair()
         tk.Frame.__init__(self, parent)
 
         button1 = tk.Button(self, text="Text communicator",
@@ -56,14 +65,19 @@ class MainWindow(tk.Frame):
 
         button_filedir = tk.Button(self, text='Choose a file', command=lambda: self.chooseFileButton())
         button_filedir.grid(row=3, column=1, ipadx=5, pady=2)
-
+        bar = Progressbar(self, orient=HORIZONTAL, length=300)
+        bar.grid(row=5, column=1, ipadx=5, padx=10, pady=2)
         confirm = tk.Button(self, text='Send', command=lambda: client.sendFile(entry_ip.get(), int(entry_port.get()),
-                                                                               file))
+                                                                               self, bar, self.keys, file))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
     def chooseFileButton(self):
         global file
         file = fd.askopenfilename(initialdir='/')
+
+    def establishConnection(self, entry_ip, entry_port):
+        client.sendPublicKey(entry_ip.get(), int(entry_port.get()),
+                             self.keys)
 
     def createIpPortSelection(self):
         """ This function creates labels and entries for setting transfer receiver, as well as a label displaying

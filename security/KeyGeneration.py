@@ -1,12 +1,14 @@
 import os
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes, padding
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import padding as pd
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 PRIVATE_KEY_LOCATION = "keys/private_key/private_key.pem"
 PUBLIC_KEY_LOCATION = "keys/public_key/public_key.pem"
+SESSION_KEY_LOCATION = "keys/session_key/session_key.pem"
 
 
 class Keys:
@@ -16,7 +18,7 @@ class Keys:
         self.public_key = None
         self.session_key = None
         self.password = b"admin"
-
+        self.other_public_key = None
         # creating local key from password
         digest = hashes.Hash(hashes.SHA256())
         digest.update(self.password)
@@ -69,7 +71,7 @@ class Keys:
             decryptor = cipher.decryptor()
             decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
             # Unpad the private key bytes
-            unpadder = padding.PKCS7(128).unpadder()
+            unpadder = pd.PKCS7(128).unpadder()
             unpadded_data = unpadder.update(decrypted_data) + unpadder.finalize()
 
             self.private_key = serialization.load_pem_private_key(unpadded_data,
@@ -80,4 +82,10 @@ class Keys:
             return
 
     def generateSessionKey(self):
-        pass
+        self.session_key = os.urandom(16)
+        print(self.session_key)
+        session_key_encrypted = self.other_public_key.encrypt(self.session_key, padding.OAEP(
+                                                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                                        algorithm=hashes.SHA256(),
+                                                        label=None))
+        return session_key_encrypted
