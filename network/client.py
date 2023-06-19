@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 from time import sleep
 from tqdm import tqdm
 from cryptography.hazmat.backends import default_backend
@@ -38,6 +39,7 @@ def sendText(ip, port, keys, text, cipher_type="cbc"):
 
 
 def encrypt(text, cipher, barcyph=None, win=None):
+    start = time.perf_counter()
     if barcyph is not None:
         barcyph["value"] = 0
         win.update_idletasks()
@@ -50,6 +52,8 @@ def encrypt(text, cipher, barcyph=None, win=None):
     ct = encryptor.update(padded_data) + encryptor.finalize()
     if barcyph is not None:
         barcyph["value"] = barcyph["maximum"]
+    end = time.perf_counter()
+    print(f"CLIENT: Encryption time = {end-start}")
     return ct
 
 

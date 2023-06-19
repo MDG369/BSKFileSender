@@ -1,5 +1,5 @@
 import socket
-
+import time
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding as pd
@@ -87,7 +87,7 @@ class Server:
 
         """ Data transfer """
         bar = tqdm(range(size), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=self.block_size)
-
+        start = time.perf_counter()
         with open(f"recv_{filename}", "wb") as f:
             while True:
                 data = conn.recv(block_size+32)
@@ -99,7 +99,8 @@ class Server:
                 conn.send("Data received.".encode(FORMAT))
 
                 bar.update(len(data))
-
+        end = time.perf_counter()
+        print(f"[SERVER] Time of the transfer was: {end-start}")
 
 def receiveText(conn, cipher):
     encrypted_message = conn.recv(SIZE)
