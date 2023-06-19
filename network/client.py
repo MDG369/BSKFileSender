@@ -13,11 +13,11 @@ SIZE = 1024
 
 
 def sendText(ip, port, keys, text, cipher_type="cbc"):
+
     """ Starting a TCP socket. """
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ADDR = (ip, port)
     """ Connecting to the server. """
-
     client.connect(ADDR)
     sendPublicKey(client, keys)
     sendTransferParameters(client, keys, 1, cipher_type, 1, 1)
@@ -37,16 +37,23 @@ def sendText(ip, port, keys, text, cipher_type="cbc"):
     client.close()
 
 
-def encrypt(text, cipher):
-
+def encrypt(text, cipher, barcyph=None, win=None):
+    if barcyph is not None:
+        barcyph["value"] = 0
+        win.update_idletasks()
     padder = pd.PKCS7(128).padder()
     padded_data = padder.update(text) + padder.finalize()
+    if barcyph is not None:
+        barcyph["value"] = 50
+        win.update_idletasks()
     encryptor = cipher.encryptor()
     ct = encryptor.update(padded_data) + encryptor.finalize()
+    if barcyph is not None:
+        barcyph["value"] = barcyph["maximum"]
     return ct
 
 
-def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
+def sendFile(ip, port, win, barprog, barcyph, keys,  filedir=None, cipher_type="cbc", block_size=1024):
     """ Starting a TCP socket. """
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -54,26 +61,19 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
     """ Connecting to the server. """
     client.connect(ADDR)
 
-    print(keys.public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                                       format=serialization.PublicFormat.SubjectPublicKeyInfo))
-
     """ Sending either file """
     if filedir is not None:
         """ Opening and reading the file data. """
         size = os.path.getsize(filedir)
-        block_size = 9999
         sendPublicKey(client, keys)
         sendTransferParameters(client, keys, block_size, cipher_type, 0, size)
         cipher = None
         if cipher_type == 'cbc':
-            print("CLIENT: cbc")
+            print("[CLIENT]: Cipher type is CBC")
             cipher = Cipher(algorithms.AES(keys.session_key), modes.CBC(keys.iv))
         elif cipher_type == 'ecb':
-            print("CLIENT: ecb")
+            print("[CLIENT]: Cipher type is ECB")
             cipher = Cipher(algorithms.AES(keys.session_key), modes.ECB())
-        # file = open(filedir, 'r')
-        #
-        # data = file.read()
         """ Sending the filename to the server. """
 
         encrypted_filename = encrypt(bytes(os.path.basename(filedir),"utf-8"), cipher)
@@ -96,33 +96,18 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
                     break
                 barprog["value"] += block_size
                 win.update_idletasks()
-                client.send(encrypt(data, cipher))
+                client.send(encrypt(data, cipher, barcyph, win))
                 msg = client.recv(SIZE).decode(FORMAT)
-                # print(f"[SERVER]: {msg}")
                 bar.update(len(data))
         barprog["value"] = size
         bar.update(len(data))
 
         """ Closing the connection """
         client.close()
-    #
-    #
-    #     """ Sending the file data to the server. """
-    #     client.send(data.encode(FORMAT))
-    #     msg = client.recv(SIZE).decode(FORMAT)
-    #     print(f"[SERVER]: {msg}")
-    #
-    #     """ Closing the file. """
-    #     file.close()
-    # """ Closing the connection from the server. """
-    # client.close()
-
 
 def sendPublicKey(client, keys):
     """  Sending Public key of the user and receiving encrypted session key from the receiver """
     if keys.public_key is not None:
-        print(keys.public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                                           format=serialization.PublicFormat.SubjectPublicKeyInfo))
         client.send(keys.public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                                 format=serialization.PublicFormat.SubjectPublicKeyInfo))
         session_key_encrypted = client.recv(SIZE)
@@ -134,7 +119,7 @@ def sendPublicKey(client, keys):
                                 label=None
                             ))
 
-        print(f"received session key {keys.session_key}")
+        print(f"[CLIENT]: received session key {keys.session_key}")
 
 
 def sendTransferParameters(client, keys, block_size, cipher_type, type_of_transfer, size):
@@ -146,14 +131,14 @@ def sendTransferParameters(client, keys, block_size, cipher_type, type_of_transf
         <br/> type_of_transfer - 0 for file transfer, 1 for text transfer
         <br/> size - total size of the file
         <br/> <br/> The parameters are serialized
-        <br/> 4 bytes block size -- 3 bytes cipher type -- 1 byte for type -- 8 for size, i.e.:
-        <br/> 1024cbc100016234
+        <br/> 5 bytes block size -- 3 bytes cipher type -- 1 byte for type -- 8 for size, i.e.:
+        <br/> 10240cbc100016234
     """
     keys.iv = os.urandom(16)
     client.send(keys.iv)
     print(f"[CLIENT]  iv {keys.iv}")
     print(f"type_of_transfer {type_of_transfer}")
-    parameters = bytes(str(block_size).zfill(4) + cipher_type + str(type_of_transfer) + str(size).zfill(8), "utf-8")
+    parameters = bytes(str(block_size).zfill(8) + cipher_type + str(type_of_transfer) + str(size).zfill(8), "utf-8")
     print(f"[CLIENT] parameters {parameters}")
 
     padder = pd.PKCS7(128).padder()
