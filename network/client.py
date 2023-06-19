@@ -12,26 +12,35 @@ FORMAT = "utf-8"
 SIZE = 1024
 
 
-def sendText(ip, port, text):
+def sendText(ip, port, keys, text, cipher_type="cbc"):
     """ Starting a TCP socket. """
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ADDR = (ip, port)
     """ Connecting to the server. """
 
     client.connect(ADDR)
-    sleep(1)
+    sendPublicKey(client, keys)
+    sendTransferParameters(client, keys, 1, cipher_type, 1, 1)
+    cipher = None
+    if cipher_type == 'cbc':
+        print("CLIENT: cbc")
+        cipher = Cipher(algorithms.AES(keys.session_key), modes.CBC(keys.iv))
+    elif cipher_type == 'ecb':
+        print("CLIENT: ecb")
+        cipher = Cipher(algorithms.AES(keys.session_key), modes.ECB())
     """ 'TEXT' is appended to every text message to differentiate text and file transfer """
     if text is not None:
-        client.send(b'TEXT' + bytes(text))
+        encrypted_text = encrypt(text, cipher)
+        client.send(encrypted_text)
 
     """ Closing the connection from the server. """
     client.close()
-    connected = False
+
 
 def encrypt(text, cipher):
 
     padder = pd.PKCS7(128).padder()
-    padded_data = padder.update(bytes(text, "utf-8")) + padder.finalize()
+    padded_data = padder.update(text) + padder.finalize()
     encryptor = cipher.encryptor()
     ct = encryptor.update(padded_data) + encryptor.finalize()
     return ct
@@ -52,7 +61,7 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
     if filedir is not None:
         """ Opening and reading the file data. """
         size = os.path.getsize(filedir)
-        block_size = 1024
+        block_size = 9999
         sendPublicKey(client, keys)
         sendTransferParameters(client, keys, block_size, cipher_type, 0, size)
         cipher = None
@@ -67,7 +76,7 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
         # data = file.read()
         """ Sending the filename to the server. """
 
-        encrypted_filename = encrypt(os.path.basename(filedir), cipher)
+        encrypted_filename = encrypt(bytes(os.path.basename(filedir),"utf-8"), cipher)
 
         print(f"CLIENT: Encryptedfilename {encrypted_filename}")
         client.send(encrypted_filename)
@@ -78,7 +87,8 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
         print("sending")
         bar = tqdm(range(size), f"Sending {filedir}", unit="B", unit_scale=True, unit_divisor=block_size)
         barprog["maximum"] = size
-        with open(filedir, "r", encoding="utf8") as f:
+        barprog["value"] = 0
+        with open(filedir, "rb") as f:
             while True:
                 data = f.read(block_size)
 
@@ -88,7 +98,7 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
                 win.update_idletasks()
                 client.send(encrypt(data, cipher))
                 msg = client.recv(SIZE).decode(FORMAT)
-                print(f"[SERVER]: {msg}")
+                # print(f"[SERVER]: {msg}")
                 bar.update(len(data))
         barprog["value"] = size
         bar.update(len(data))
@@ -142,7 +152,7 @@ def sendTransferParameters(client, keys, block_size, cipher_type, type_of_transf
     keys.iv = os.urandom(16)
     client.send(keys.iv)
     print(f"[CLIENT]  iv {keys.iv}")
-
+    print(f"type_of_transfer {type_of_transfer}")
     parameters = bytes(str(block_size).zfill(4) + cipher_type + str(type_of_transfer) + str(size).zfill(8), "utf-8")
     print(f"[CLIENT] parameters {parameters}")
 
