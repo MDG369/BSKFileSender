@@ -62,22 +62,33 @@ class MainWindow(tk.Frame):
         button1.grid(row=0, column=6, padx=10, pady=2)
 
         entry_ip, entry_port = self.createIpPortSelection()
-
+        mode = tk.StringVar(value='cbc')
+        button_ciphermode = tk.Button(self, textvariable=mode, command=lambda: self.switchCipherMode(mode))
+        button_ciphermode.grid(row=3, column=2, ipadx=5, pady=2)
         button_filedir = tk.Button(self, text='Choose a file', command=lambda: self.chooseFileButton())
         button_filedir.grid(row=3, column=1, ipadx=5, pady=2)
         bar = Progressbar(self, orient=HORIZONTAL, length=300)
         bar.grid(row=5, column=1, ipadx=5, padx=10, pady=2)
         confirm = tk.Button(self, text='Send', command=lambda: client.sendFile(entry_ip.get(), int(entry_port.get()),
-                                                                               self, bar, self.keys, file))
+                                                                               self, bar, self.keys, file, mode.get()))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
-    def chooseFileButton(self):
+    @staticmethod
+    def chooseFileButton():
         global file
         file = fd.askopenfilename(initialdir='/')
+
+    @staticmethod
+    def switchCipherMode(mode):
+        if mode.get() == 'cbc':
+            mode.set('ecb')
+        else:
+            mode.set('cbc')
 
     def establishConnection(self, entry_ip, entry_port):
         client.sendPublicKey(entry_ip.get(), int(entry_port.get()),
                              self.keys)
+
 
     def createIpPortSelection(self):
         """ This function creates labels and entries for setting transfer receiver, as well as a label displaying

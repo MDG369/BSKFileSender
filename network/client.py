@@ -34,7 +34,6 @@ def encrypt(text, cipher):
     padded_data = padder.update(bytes(text, "utf-8")) + padder.finalize()
     encryptor = cipher.encryptor()
     ct = encryptor.update(padded_data) + encryptor.finalize()
-    print(f"client: {ct}")
     return ct
 
 
@@ -57,9 +56,11 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
         sendPublicKey(client, keys)
         sendTransferParameters(client, keys, block_size, cipher_type, 0, size)
         cipher = None
-        if cipher_type == "b'cbc'" or b'cbc':
+        if cipher_type == 'cbc':
+            print("CLIENT: cbc")
             cipher = Cipher(algorithms.AES(keys.session_key), modes.CBC(keys.iv))
-        elif cipher_type == b'ecb' or "b'ecc'":
+        elif cipher_type == 'ecb':
+            print("CLIENT: ecb")
             cipher = Cipher(algorithms.AES(keys.session_key), modes.ECB())
         # file = open(filedir, 'r')
         #
@@ -91,6 +92,7 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
                 bar.update(len(data))
         barprog["value"] = size
         bar.update(len(data))
+
         """ Closing the connection """
         client.close()
     #

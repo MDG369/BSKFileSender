@@ -64,9 +64,11 @@ class Server:
             size = int(session_parameters[8:])
             print(f"{type_of_transfer} type of transfer {block_size} block size+ {cipher_type} size {size}")
             cipher = None
-            if cipher_type == "b'cbc'" or b'cbc':
+            if cipher_type == "b'cbc'" or cipher_type == b'cbc':
+                print("SERVER CBC")
                 cipher = Cipher(algorithms.AES(self.keys.session_key), modes.CBC(self.keys.iv))
-            elif cipher_type == b'ecb' or "b'ecb'":
+            elif cipher_type == str(b'ecb') or cipher_type == b'ecb':
+                print("SERVER ECB")
                 cipher = Cipher(algorithms.AES(self.keys.session_key), modes.ECB())
             if type_of_transfer == 0:
                 self.receiveFile(conn, block_size, cipher, size)
@@ -120,7 +122,6 @@ def receiveText(conn):
 def decrypt(text, cipher):
     decryptor = cipher.decryptor()
     ct = decryptor.update(text) + decryptor.finalize()
-    print(text, ct)
     unpadder = pd.PKCS7(128).unpadder()
     unpadded_data = unpadder.update(ct) + unpadder.finalize()
     return unpadded_data
