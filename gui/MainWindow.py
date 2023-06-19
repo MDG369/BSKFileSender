@@ -1,11 +1,14 @@
 import tkinter as tk
 import socket
+from tkinter.constants import HORIZONTAL
+from tkinter.ttk import Progressbar
+
+from cryptography.hazmat.primitives import serialization
+
 from network import client
 from tkinter import filedialog as fd
-
+import security.KeyGeneration
 file = ""
-
-
 
 
 class TkinterApp(tk.Tk):
@@ -21,7 +24,7 @@ class TkinterApp(tk.Tk):
 
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-        self.geometry("350x150")
+        self.geometry("600x400")
         # initializing frames to an empty array
         self.frames = {}
 
@@ -39,6 +42,8 @@ class TkinterApp(tk.Tk):
 
         self.show_frame(MainWindow)
 
+
+
     # to display the current frame passed as
     # parameter
     def show_frame(self, cont):
@@ -48,6 +53,8 @@ class TkinterApp(tk.Tk):
 
 class MainWindow(tk.Frame):
     def __init__(self, parent, controller):
+        self.keys = security.KeyGeneration.Keys()
+        self.keys.readKeyPair(password=b'admin')
         tk.Frame.__init__(self, parent)
 
         button1 = tk.Button(self, text="Text communicator",
@@ -55,17 +62,33 @@ class MainWindow(tk.Frame):
         button1.grid(row=0, column=6, padx=10, pady=2)
 
         entry_ip, entry_port = self.createIpPortSelection()
-
+        mode = tk.StringVar(value='cbc')
+        button_ciphermode = tk.Button(self, textvariable=mode, command=lambda: self.switchCipherMode(mode))
+        button_ciphermode.grid(row=3, column=2, ipadx=5, pady=2)
         button_filedir = tk.Button(self, text='Choose a file', command=lambda: self.chooseFileButton())
         button_filedir.grid(row=3, column=1, ipadx=5, pady=2)
-
+        bar = Progressbar(self, orient=HORIZONTAL, length=300)
+        bar.grid(row=5, column=1, ipadx=5, padx=10, pady=2)
         confirm = tk.Button(self, text='Send', command=lambda: client.sendFile(entry_ip.get(), int(entry_port.get()),
-                                                                               file))
+                                                                               self, bar, self.keys, file, mode.get()))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
-    def chooseFileButton(self):
+    @staticmethod
+    def chooseFileButton():
         global file
         file = fd.askopenfilename(initialdir='/')
+
+    @staticmethod
+    def switchCipherMode(mode):
+        if mode.get() == 'cbc':
+            mode.set('ecb')
+        else:
+            mode.set('cbc')
+
+    def establishConnection(self, entry_ip, entry_port):
+        client.sendPublicKey(entry_ip.get(), int(entry_port.get()),
+                             self.keys)
+
 
     def createIpPortSelection(self):
         """ This function creates labels and entries for setting transfer receiver, as well as a label displaying
@@ -100,7 +123,8 @@ class TextWindow(MainWindow):
         button1 = tk.Button(self, text="File transfer",
                             command=lambda: controller.show_frame(MainWindow))
         button1.grid(row=0, column=6, padx=10, pady=2, ipadx=20)
-
+        conn_message_label = tk.Label(self, textvariable="True")
+        conn_message_label.grid(row=3, column=2, padx=10, pady=2)
         entry_ip, entry_port = self.createIpPortSelection()
 
         text_message_label = tk.Label(self, text="Message")
@@ -111,6 +135,9 @@ class TextWindow(MainWindow):
         confirm = tk.Button(self, text='Send', command=lambda: client.sendText(entry_ip.get(), int(entry_port.get()),
                                                                                bytes(entry_text_message.get(), "utf-8")))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
+
+    def updateDisplay(self, myString, displayVar):
+        displayVar.set(myString)
 
 
 def main():
