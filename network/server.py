@@ -28,9 +28,14 @@ class Server:
         print("[STARTING] Server is starting.")
         """ Staring a TCP socket. """
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+        global PORT
         """ Bind the IP and PORT to the server. """
-        server_socket.bind(ADDR)
+        while True:
+            try:
+                server_socket.bind((IP, PORT))
+                break
+            except OSError:
+                PORT += 1
 
         """ Server is listening, i.e., server is now waiting for the client to connected. """
         server_socket.listen()
@@ -70,10 +75,11 @@ class Server:
             elif cipher_type == str(b'ecb') or cipher_type == b'ecb':
                 print("SERVER ECB")
                 cipher = Cipher(algorithms.AES(self.keys.session_key), modes.ECB())
-            if type_of_transfer == 0:
+            print(type_of_transfer)
+            if str(type_of_transfer) == '0':
                 self.receiveFile(conn, block_size, cipher, size)
-            elif type_of_transfer == 1:
-                receiveText(conn)
+            elif str(type_of_transfer) == '1':
+                receiveText(conn, cipher)
             # else:
             #     print(f"[RECV] Receiving the filename.")
             #     file = open(filename, "w")
@@ -96,27 +102,32 @@ class Server:
         encrypted_filename = conn.recv(SIZE)
         print(f"SERVER: Encryptedfilename {encrypted_filename}")
         filename = decrypt(encrypted_filename, cipher)
+        filename = filename.decode(FORMAT)
         print(f"[+] Filename and filesize received from the client.{filename}")
         conn.send(f"{filename} Filename and filesize received".encode(FORMAT))
 
         """ Data transfer """
         bar = tqdm(range(size), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=self.block_size)
 
-        with open(f"recv_{filename}", "w") as f:
+        with open(f"recv_{filename}", "wb") as f:
             while True:
                 data = conn.recv(block_size+32)
 
                 if not data:
                     break
 
-                f.write(decrypt(data, cipher).decode(FORMAT))
+                f.write(decrypt(data, cipher))
                 conn.send("Data received.".encode(FORMAT))
 
                 bar.update(len(data))
 
 
-def receiveText(conn):
-    pass
+def receiveText(conn, cipher):
+    encrypted_message = conn.recv(SIZE)
+    message = decrypt(encrypted_message, cipher)
+    with open(f"recvmsg.txt", "ab") as f:
+        f.write(message + b'\n')
+    print(f"Received a message: {message}")
 
 
 def decrypt(text, cipher):

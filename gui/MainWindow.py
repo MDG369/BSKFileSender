@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 import socket
 from tkinter.constants import HORIZONTAL
@@ -9,7 +10,6 @@ from network import client
 from tkinter import filedialog as fd
 import security.KeyGeneration
 file = ""
-
 
 class TkinterApp(tk.Tk):
 
@@ -67,6 +67,7 @@ class MainWindow(tk.Frame):
         button_ciphermode.grid(row=3, column=2, ipadx=5, pady=2)
         button_filedir = tk.Button(self, text='Choose a file', command=lambda: self.chooseFileButton())
         button_filedir.grid(row=3, column=1, ipadx=5, pady=2)
+
         bar = Progressbar(self, orient=HORIZONTAL, length=300)
         bar.grid(row=5, column=1, ipadx=5, padx=10, pady=2)
         confirm = tk.Button(self, text='Send', command=lambda: client.sendFile(entry_ip.get(), int(entry_port.get()),
@@ -88,6 +89,8 @@ class MainWindow(tk.Frame):
     def establishConnection(self, entry_ip, entry_port):
         client.sendPublicKey(entry_ip.get(), int(entry_port.get()),
                              self.keys)
+
+
 
 
     def createIpPortSelection(self):
@@ -119,7 +122,8 @@ class MainWindow(tk.Frame):
 class TextWindow(MainWindow):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-
+        self.keys = security.KeyGeneration.Keys()
+        self.keys.readKeyPair(password=b'admin')
         button1 = tk.Button(self, text="File transfer",
                             command=lambda: controller.show_frame(MainWindow))
         button1.grid(row=0, column=6, padx=10, pady=2, ipadx=20)
@@ -131,15 +135,33 @@ class TextWindow(MainWindow):
         text_message_label.grid(row=3, column=0, padx=10, pady=2)
         entry_text_message = tk.Entry(self)
         entry_text_message.grid(row=3, column=1, pady=2)
+        msg = tk.StringVar(value='No message received')
+        message_label = tk.Label(self, textvariable=msg)
+        message_label.grid(row=8, column=1)
+        button_read_message = tk.Button(self, text='Read a message', command=lambda: self.readMessage(msg))
+        button_read_message.grid(row=7, column=1)
 
-        confirm = tk.Button(self, text='Send', command=lambda: client.sendText(entry_ip.get(), int(entry_port.get()),
+        confirm = tk.Button(self, text='Send', command=lambda: client.sendText(entry_ip.get(), int(entry_port.get()),self.keys,
                                                                                bytes(entry_text_message.get(), "utf-8")))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
     def updateDisplay(self, myString, displayVar):
         displayVar.set(myString)
 
+    @staticmethod
+    def readMessage(msg):
+        try:
+            f = open("recvmsg.txt", "r")
+            msg.set(f.read())
+            f.close()
+            os.remove("recvmsg.txt")
+        except FileNotFoundError:
+            msg.set("No messages received")
+
 
 def main():
     app = TkinterApp()
-    app.mainloop()
+    while(True):
+
+        app.mainloop()
+
