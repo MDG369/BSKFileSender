@@ -18,7 +18,7 @@ SESSION_KEY_LOCATION = "keys/session_key/session_key.pem"
 class Server:
     def __init__(self):
         self.keys = security.KeyGeneration.Keys()
-        self.keys.readKeyPair()
+        self.keys.readKeyPair(b'admin')
         self.block_size = SIZE
         self.cipher_type = "cbc"
         self.type_of_transfer = 0  # 0 is file, 1 is text

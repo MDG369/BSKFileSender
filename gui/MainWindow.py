@@ -54,7 +54,7 @@ class TkinterApp(tk.Tk):
 class MainWindow(tk.Frame):
     def __init__(self, parent, controller):
         self.keys = security.KeyGeneration.Keys()
-        self.keys.readKeyPair()
+        self.keys.readKeyPair(password=b'admin')
         tk.Frame.__init__(self, parent)
 
         button1 = tk.Button(self, text="Text communicator",
