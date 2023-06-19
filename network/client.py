@@ -111,8 +111,6 @@ def sendFile(ip, port, win, barprog, keys,  filedir=None, cipher_type="cbc"):
 def sendPublicKey(client, keys):
     """  Sending Public key of the user and receiving encrypted session key from the receiver """
     if keys.public_key is not None:
-        print(keys.public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                                           format=serialization.PublicFormat.SubjectPublicKeyInfo))
         client.send(keys.public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                                 format=serialization.PublicFormat.SubjectPublicKeyInfo))
         session_key_encrypted = client.recv(SIZE)
