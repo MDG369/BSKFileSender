@@ -24,7 +24,6 @@ class Keys:
         digest.update(self.password)
         self.local_key = digest.finalize()
         self.iv = b'\x80\xae\xfe*\xc3g\x18\xc0J\xb3\xc8N\x81LR('
-        self.readKeyPair()
 
     def generateKeyPair(self):
         self.private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -40,10 +39,10 @@ class Keys:
                                                encryption_algorithm=serialization.NoEncryption()))
             key_file.write(private_key_encrypted)
 
-    def readKeyPair(self):
+    def readKeyPair(self, password):
         try:
             key_file = open(PUBLIC_KEY_LOCATION, 'rb')
-            self.decryptPrivateKey()
+            self.decryptPrivateKey(password)
             self.public_key = serialization.load_pem_public_key(
                 key_file.read(),
                 backend=default_backend())
@@ -62,12 +61,15 @@ class Keys:
         private_key_encrypted = encryptor.update(padded_data) + encryptor.finalize()
         return private_key_encrypted
 
-    def decryptPrivateKey(self):
+    def decryptPrivateKey(self, password):
         try:
+            digest = hashes.Hash(hashes.SHA256())
+            digest.update(password)
+            password = digest.finalize()
             key_file = open(PRIVATE_KEY_LOCATION, 'rb')
             ciphertext = key_file.read()
             # Create an AES cipher decryptor with CBC mode
-            cipher = Cipher(algorithms.AES(self.local_key), modes.CBC(self.iv))
+            cipher = Cipher(algorithms.AES(password), modes.CBC(self.iv))
             decryptor = cipher.decryptor()
             decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
             # Unpad the private key bytes
@@ -80,6 +82,8 @@ class Keys:
             print(unpadded_data)
         except FileNotFoundError:
             return
+        except ValueError:
+            raise ValueError
 
     def generateSessionKey(self):
         self.session_key = os.urandom(16)
