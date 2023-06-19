@@ -79,7 +79,6 @@ class Keys:
             self.private_key = serialization.load_pem_private_key(unpadded_data,
                                                                   password=None,
                                                                   backend=default_backend())
-            print(unpadded_data)
         except FileNotFoundError:
             return
         except ValueError:
@@ -87,7 +86,6 @@ class Keys:
 
     def generateSessionKey(self):
         self.session_key = os.urandom(16)
-        print(self.session_key)
         session_key_encrypted = self.other_public_key.encrypt(self.session_key, padding.OAEP(
                                                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                                                         algorithm=hashes.SHA256(),

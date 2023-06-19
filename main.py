@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 if __name__ == '__main__':
     while True:
-        if LoginWindow.loginWindow():
+        # if LoginWindow.loginWindow():
             p1 = Process(target=MainWindow.main)
             p1.start()
             p2 = Process(target=server.main)

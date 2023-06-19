@@ -28,9 +28,14 @@ class Server:
         print("[STARTING] Server is starting.")
         """ Staring a TCP socket. """
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+        global PORT
         """ Bind the IP and PORT to the server. """
-        server_socket.bind(ADDR)
+        while True:
+            try:
+                server_socket.bind((IP, PORT))
+                break
+            except OSError:
+                PORT += 1
 
         """ Server is listening, i.e., server is now waiting for the client to connected. """
         server_socket.listen()
@@ -44,79 +49,64 @@ class Server:
             """ Receiving the either filename or text message from the client. """
             message = conn.recv(SIZE)
 
-            # """ 'TEXT' is appended to every text message to differentiate text and file transfer """
-            # if filename[:4] == 'TEXT':
-            #     print(f"Received text message: {filename[4:]}")
-            #     conn.send("Text message received".encode(FORMAT))
-
-            print(f"{message}Received public key")
+            print(f"Received public key")
             self.keys.other_public_key = serialization.load_pem_public_key(message)
             conn.send(self.keys.generateSessionKey())
 
-            print(f"[SERVER] sk = {self.keys.session_key}")
+            print(f"[SERVER] session key = {self.keys.session_key}")
 
             self.keys.iv = conn.recv(SIZE)
             cipher = Cipher(algorithms.AES(self.keys.session_key), modes.CBC(self.keys.iv))
             session_parameters = decrypt(conn.recv(SIZE), cipher)
-            block_size = int(session_parameters[:4])
-            cipher_type = str(session_parameters[4:7])
-            type_of_transfer = int(session_parameters[7:8])
-            size = int(session_parameters[8:])
-            print(f"{type_of_transfer} type of transfer {block_size} block size+ {cipher_type} size {size}")
+            block_size = int(session_parameters[:8])
+            cipher_type = str(session_parameters[8:11])
+            type_of_transfer = int(session_parameters[11:12])
+            size = int(session_parameters[12:])
             cipher = None
             if cipher_type == "b'cbc'" or cipher_type == b'cbc':
-                print("SERVER CBC")
+                print("[SERVER] Cipher type is CBC")
                 cipher = Cipher(algorithms.AES(self.keys.session_key), modes.CBC(self.keys.iv))
             elif cipher_type == str(b'ecb') or cipher_type == b'ecb':
-                print("SERVER ECB")
+                print("[SERVER] Cipher type is ECB")
                 cipher = Cipher(algorithms.AES(self.keys.session_key), modes.ECB())
-            if type_of_transfer == 0:
+            print(type_of_transfer)
+            if str(type_of_transfer) == '0':
                 self.receiveFile(conn, block_size, cipher, size)
-            elif type_of_transfer == 1:
-                receiveText(conn)
-            # else:
-            #     print(f"[RECV] Receiving the filename.")
-            #     file = open(filename, "w")
-            #     conn.send("Filename received.".encode(FORMAT))
-            #
-            #     """ Receiving the file data from the client. """
-            #     data = conn.recv(SIZE).decode(FORMAT)
-            #     print(f"[RECV] Receiving the file data.")
-            #     file.write(data)
-            #     conn.send("File data received".encode(FORMAT))
-            #
-            #     """ Closing the file. """
-            #     file.close()
-
+            elif str(type_of_transfer) == '1':
+                receiveText(conn, cipher)
             """ Closing the connection from the client. """
             conn.close()
             print(f"[DISCONNECTED] {addr} disconnected.")
 
     def receiveFile(self, conn, block_size, cipher, size):
         encrypted_filename = conn.recv(SIZE)
-        print(f"SERVER: Encryptedfilename {encrypted_filename}")
         filename = decrypt(encrypted_filename, cipher)
+        filename = filename.decode(FORMAT)
         print(f"[+] Filename and filesize received from the client.{filename}")
         conn.send(f"{filename} Filename and filesize received".encode(FORMAT))
 
         """ Data transfer """
         bar = tqdm(range(size), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=self.block_size)
 
-        with open(f"recv_{filename}", "w") as f:
+        with open(f"recv_{filename}", "wb") as f:
             while True:
                 data = conn.recv(block_size+32)
 
                 if not data:
                     break
 
-                f.write(decrypt(data, cipher).decode(FORMAT))
+                f.write(decrypt(data, cipher))
                 conn.send("Data received.".encode(FORMAT))
 
                 bar.update(len(data))
 
 
-def receiveText(conn):
-    pass
+def receiveText(conn, cipher):
+    encrypted_message = conn.recv(SIZE)
+    message = decrypt(encrypted_message, cipher)
+    with open(f"recvmsg.txt", "ab") as f:
+        f.write(message + b'\n')
+    print(f"Received a message: {message}")
 
 
 def decrypt(text, cipher):

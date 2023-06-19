@@ -1,3 +1,5 @@
+import os
+import threading
 import tkinter as tk
 import socket
 from tkinter.constants import HORIZONTAL
@@ -9,7 +11,6 @@ from network import client
 from tkinter import filedialog as fd
 import security.KeyGeneration
 file = ""
-
 
 class TkinterApp(tk.Tk):
 
@@ -59,18 +60,28 @@ class MainWindow(tk.Frame):
 
         button1 = tk.Button(self, text="Text communicator",
                             command=lambda: controller.show_frame(TextWindow))
-        button1.grid(row=0, column=6, padx=10, pady=2)
+        button1.grid(row=0, column=2, padx=10, pady=2)
 
         entry_ip, entry_port = self.createIpPortSelection()
         mode = tk.StringVar(value='cbc')
         button_ciphermode = tk.Button(self, textvariable=mode, command=lambda: self.switchCipherMode(mode))
         button_ciphermode.grid(row=3, column=2, ipadx=5, pady=2)
+        block_size_label = tk.Label(self, text="Input desired block size (up to 8 digits)")
+        block_size_label.grid(row=5, column=1)
+        entry_block_size = tk.Entry(self)
+        entry_block_size.grid(row=6, column=1)
         button_filedir = tk.Button(self, text='Choose a file', command=lambda: self.chooseFileButton())
         button_filedir.grid(row=3, column=1, ipadx=5, pady=2)
+        bar_label = tk.Label(self, text="Transfer progress")
+        bar_label.grid(row=7, column=1)
         bar = Progressbar(self, orient=HORIZONTAL, length=300)
-        bar.grid(row=5, column=1, ipadx=5, padx=10, pady=2)
-        confirm = tk.Button(self, text='Send', command=lambda: client.sendFile(entry_ip.get(), int(entry_port.get()),
-                                                                               self, bar, self.keys, file, mode.get()))
+        bar.grid(row=8, column=1, pady=2)
+        barcyph_label = tk.Label(self, text="Block encryption progress")
+        barcyph_label.grid(row=9, column=1)
+        barcyph = Progressbar(self, orient=HORIZONTAL, length=100)
+        barcyph.grid(row=10, column=1, pady=2)
+        confirm = tk.Button(self, text='Send', command=lambda: self.fileSendingThread(entry_ip.get(), entry_port.get(),
+                                                                                      bar, barcyph, file, mode, entry_block_size))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
     @staticmethod
@@ -88,6 +99,13 @@ class MainWindow(tk.Frame):
     def establishConnection(self, entry_ip, entry_port):
         client.sendPublicKey(entry_ip.get(), int(entry_port.get()),
                              self.keys)
+
+    def fileSendingThread(self, ip, port, bar, barcyph, filedir, mode, block_size):
+        print(file)
+        t = threading.Thread(target=client.sendFile, args=(ip, int(port),
+                                                           self, bar, barcyph, self.keys, filedir, mode.get(),
+                                                           int(block_size.get()),))
+        t.start()
 
 
     def createIpPortSelection(self):
@@ -120,26 +138,48 @@ class TextWindow(MainWindow):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
+        self.keys = security.KeyGeneration.Keys()
+        self.keys.readKeyPair(password=b'admin')
+
         button1 = tk.Button(self, text="File transfer",
                             command=lambda: controller.show_frame(MainWindow))
-        button1.grid(row=0, column=6, padx=10, pady=2, ipadx=20)
-        conn_message_label = tk.Label(self, textvariable="True")
-        conn_message_label.grid(row=3, column=2, padx=10, pady=2)
+        button1.grid(row=0, column=2, padx=10, pady=2, ipadx=20)
+
         entry_ip, entry_port = self.createIpPortSelection()
+
+        mode = tk.StringVar(value='cbc')
+        button_ciphermode = tk.Button(self, textvariable=mode, command=lambda: self.switchCipherMode(mode))
+        button_ciphermode.grid(row=3, column=2, ipadx=5, pady=2)
 
         text_message_label = tk.Label(self, text="Message")
         text_message_label.grid(row=3, column=0, padx=10, pady=2)
         entry_text_message = tk.Entry(self)
         entry_text_message.grid(row=3, column=1, pady=2)
-
         confirm = tk.Button(self, text='Send', command=lambda: client.sendText(entry_ip.get(), int(entry_port.get()),
-                                                                               bytes(entry_text_message.get(), "utf-8")))
+                                                                               self.keys,
+                                                                               bytes(entry_text_message.get(), "utf-8"),
+                                                                               mode.get()))
         confirm.grid(row=4, column=1, ipadx=5, padx=10, pady=2)
 
-    def updateDisplay(self, myString, displayVar):
-        displayVar.set(myString)
+        msg = tk.StringVar(value='No message received')
+        message_label = tk.Label(self, textvariable=msg)
+        message_label.grid(row=8, column=1)
+
+        button_read_message = tk.Button(self, text='Read a message', command=lambda: self.readMessage(msg))
+        button_read_message.grid(row=7, column=1)
+
+    @staticmethod
+    def readMessage(msg):
+        try:
+            f = open("recvmsg.txt", "r")
+            msg.set(f.read())
+            f.close()
+            os.remove("recvmsg.txt")
+        except FileNotFoundError:
+            msg.set("No messages received")
 
 
 def main():
     app = TkinterApp()
     app.mainloop()
+
